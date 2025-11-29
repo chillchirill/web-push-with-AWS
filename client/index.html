@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Meta and dependencies -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Weather App</title>
+
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for temperature chart rendering (залишаю, як в тебе було) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    #notify-time {
+      background: #0f172a;
+      color: white;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px;
+      color-scheme: dark;
+    }
+    .wspan {
+      display: inline-block;
+      width: 250px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen p-4 flex flex-col gap-6">
+
+  <!-- Notification Rules Section: user can create conditions for alerts -->
+  <section class="w-full max-w-5xl mx-auto bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700">
+    <h2 class="text-xl font-bold mb-3">Notification Rules</h2>
+
+    <!-- Горизонтальна форма -->
+    <form id="notification-form" class="flex flex-col gap-4 mb-3">
+
+      <!-- Time selection -->
+      <div class="flex items-center gap-4">
+        <label class="w-64 font-semibold">Time of daily notification</label>
+        <input
+          id="notify-time"
+          type="time"
+          step="600"
+          class="p-2 bg-slate-900 border border-slate-700 rounded"
+        />
+      </div>
+
+      <!-- Temperature condition row -->
+      <div class="flex items-center gap-4 flex-wrap">
+        <label class="w-40 font-semibold">Temperature condition</label>
+
+        <!-- 1 select -->
+        <select id="temp-operator" class="p-2 bg-slate-900 border border-slate-700 rounded">
+          <option value=">">More than</option>
+          <option value="<">Less than</option>
+        </select>
+
+        <!-- 1: temperature value -->
+        <input
+          id="temp-value"
+          type="number"
+          class="p-2 w-24 bg-slate-900 border border-slate-700 rounded"
+          placeholder="Temp °C"
+        />
+
+        <!-- 2: start hour -->
+        <input
+          id="temp-start"
+          type="number"
+          class="p-2 w-24 bg-slate-900 border border-slate-700 rounded"
+          placeholder="Start h 0-23"
+        />
+
+        <!-- 3: end hour -->
+        <input
+          id="temp-end"
+          type="number"
+          class="p-2 w-24 bg-slate-900 border border-slate-700 rounded"
+          placeholder="End h 0-23"
+        />
+
+        <!-- Comment -->
+        <span class="text-slate-400 text-sm whitespace-nowrap wspan">
+          Temperature value and active hours of day
+        </span>
+      </div>
+
+      <!-- Wind condition row -->
+      <div class="flex items-center gap-4 flex-wrap">
+        <label class="w-40 font-semibold">Wind condition</label>
+
+        <!-- 1 select -->
+        <select id="wind-operator" class="p-2 bg-slate-900 border border-slate-700 rounded">
+          <option value=">">More than</option>
+          <option value="<">Less than</option>
+        </select>
+
+        <!-- 1: wind value -->
+        <input
+          id="wind-value"
+          type="number"
+          class="p-2 w-24 bg-slate-900 border border-slate-700 rounded"
+          placeholder="Wind m/s"
+        />
+
+        <!-- 2: start hour -->
+        <input
+          id="wind-start"
+          type="number"
+          class="p-2 w-24 bg-slate-900 border border-slate-700 rounded"
+          placeholder="Start h 0-23"
+        />
+
+        <!-- 3: end hour -->
+        <input
+          id="wind-end"
+          type="number"
+          class="p-2 w-24 bg-slate-900 border border-slate-700 rounded"
+          placeholder="End h 0-23"
+        />
+
+        <!-- Comment -->
+        <span class="text-slate-400 text-sm whitespace-nowrap wspan">
+          Wind value and active hours of day
+        </span>
+      </div>
+
+      <!-- Message -->
+      <div>
+        <label class="font-semibold">Message</label>
+        <textarea
+          id="notify-message"
+          class="w-full p-2 mt-1 bg-slate-900 border border-slate-700 rounded"
+          rows="2"
+        ></textarea>
+      </div>
+    </form>
+
+    <!-- Button to create rule -->
+    <button
+      id="add-rule-btn"
+      class="bg-blue-500 text-black px-4 py-2 rounded hover:bg-blue-400 mb-4"
+    >
+      Add Rule
+    </button>
+
+    <!-- List of active rules -->
+    <h3 class="font-semibold mb-2">Active Rules</h3>
+    <div
+      id="rules-list"
+      class="p-2 border border-slate-700 rounded bg-slate-900 text-sm text-slate-400 max-h-40 overflow-auto"
+    >
+      No rules yet. (Time, Temp/Wind, and Message are required)
+    </div>
+  </section>
+  <!-- Description / How it works -->
+<section class="w-full max-w-5xl mx-auto bg-slate-800 p-4 rounded-xl shadow-lg border border-slate-700 mt-6">
+  <h2 class="text-xl font-bold mb-3">Description</h2>
+  <p class="text-slate-300 leading-6">
+    This section lets you create automated weather notification rules.
+    <br><br>
+
+    • <b>Daily notification time</b> — the exact moment when the system will send your message (if conditions are met).  
+    <br>
+
+    • <b>Temperature condition</b> — checked ONLY within the hours you specify.  
+      You may enter ranges like <b>22 → 8</b>, which means the system considers the period as “night hours”, so the check runs from 22:00 through midnight and up to 08:00.  
+      If the temperature during any of these hours matches your More/Less rule — the notification will trigger.  
+    <br>
+
+    • <b>Wind condition</b> — works the same way as temperature.  
+      Only checked within the chosen hourly window.  
+    <br>
+
+    • <b>Message</b> — this is the text you will receive in the notification.  
+    <br><br>
+
+    Notifications will be delivered <b>exactly at the time you selected</b>, but only if your rules match the actual weather for your location during the active hours.
+  </p>
+</section>
+<script>
+// Store notification rules
+let notificationRules = [];
+
+// Helper selector
+function $(id){ return document.getElementById(id); }
+const publicVapidKey =
+    "BI3m_ozAEo0B4CzuQYql6rc9JI9HEiJfFmOPvrxlN9BPUh3ZvCmH9Bmn2wUfMjXyZcyPXCcHzjCr5CyemFKc8bo";
+
+
+
+//IMPORTANT variabels for POST!!!!!!!
+let subscription = "";
+let lat, lon;
+  // Check for service worker
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      send().catch(console.error);
+    });
+  }
+  function urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, "+")
+      .replace(/_/g, "/");
+  
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+  
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  // Register SW, Register Push, Send Push
+  async function send() {
+    // 1. Реєструємо SW
+    console.log("Registering service worker...");
+    await navigator.serviceWorker.register("/worker.js", { scope: "/" });
+    console.log("Service Worker Registered...");
+
+    // 2. ЧЕКАЄМО, поки він стане активним
+    console.log("Waiting for active service worker...");
+    const registration = await navigator.serviceWorker.ready;
+    console.log("Service worker ready:", registration);
+
+    // 3. (опціонально) запит дозволу на нотифікації
+    if (Notification.permission === "default") {
+      const permission = await Notification.requestPermission();
+      console.log("Notification permission:", permission);
+      if (permission !== "granted") {
+        console.warn("User did not grant notifications");
+        return;
+      }
+    }
+
+    // 4. Підписка на push
+    console.log("Registering Push...");
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicVapidKey),
+    });
+    console.log("Push Registered...", subscription);
+    console.log(JSON.stringify(subscription));
+    // 5. Відправляємо subscription на сервер
+    console.log("Sending Push (subscription) to server...");
+// Add new notification rule
+  }
+
+
+// Get user location.
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+       lat = pos.coords.latitude;
+       lon = pos.coords.longitude;
+
+      console.log("Latitude:", lat);
+      console.log("Longitude:", lon);
+    },
+    (err) => {
+      document.getElementById("output").innerText =
+        "Помилка: " + err.message;
+    },
+    {
+      enableHighAccuracy: false, // приблизна точність
+      timeout: 5000,
+      maximumAge: 0
+    }
+  );
+$("add-rule-btn").onclick = () => {
+  const rule = {
+    time: $("notify-time").value,
+
+    tempOp: $("temp-operator").value,
+    tempVal: parseFloat($("temp-value").value),
+    tempStart: $("temp-start").value,
+    tempEnd: $("temp-end").value,
+
+    windOp: $("wind-operator").value,
+    windVal: parseFloat($("wind-value").value),
+    windStart: $("wind-start").value,
+    windEnd: $("wind-end").value,
+
+    msg: $("notify-message").value.trim()
+  };
+  console.log(rule);
+  // Validation
+  if (!rule.time) {
+    alert("Time is required");
+    return;
+  }
+  if(lat === undefined || lon === undefined){
+    alert("Location required, reload and allow location access");
+    return;
+  }
+  if(!subscription){
+    alert("Notification subscription required, reload and allow notifications");
+    return;
+  }
+  if (!rule.msg) {
+    alert("Message is required");
+    return;
+  }
+    //fetch to AWS lambda
+    rule.subscription = subscription;
+    rule.lat = lat;
+    rule.lon = lon;
+    rule.timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    fetch("https://t707hb4dxg.execute-api.eu-west-1.amazonaws.com/prod/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(rule)
+    })
+    .then(res => res.json())
+    .then(console.log);
+    console.log("Push Sent...");
+    // Add rule
+    notificationRules.push(rule);
+    renderRules();
+  }
+
+
+
+  
+
+// Display rule list
+function renderRules(){
+  const box = $("rules-list");
+
+  if (notificationRules.length === 0) {
+    box.textContent = "No rules yet. (Time, Temp/Wind, and Message are required)";
+    return;
+  }
+
+  box.innerHTML = "";
+  notificationRules.forEach(r => {
+    const d = document.createElement("div");
+    d.className = "p-2 border-b border-slate-700";
+
+    const tempPart = r.tempVal
+      ? `Temp: ${r.tempOp} ${r.tempVal}°C (hours ${r.tempStart || "-"}–${r.tempEnd || "-"})`
+      : "Temp: -";
+
+    const windPart = r.windVal
+      ? `Wind: ${r.windOp} ${r.windVal} m/s (hours ${r.windStart || "-"}–${r.windEnd || "-"})`
+      : "Wind: -";
+
+    d.innerHTML = `
+      Time: <b>${r.time}</b> |
+      ${tempPart} |
+      ${windPart}
+      <br>
+      Msg: ${r.msg}
+    `;
+    box.appendChild(d);
+  });
+}
+</script>
+
+</body>
+</html>
